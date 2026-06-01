@@ -115,17 +115,22 @@ No inventar estilos nuevos. Respetar:
 - [x] `types/index.ts` — `Producto`, `Movimiento`, `Gasto`, `Categoria`, `MetodoPago`, `TipoMovimiento`
 - [x] `store/useStore.ts` — Zustand v5 + persist + `registrarVenta` / `registrarCompra` / `agregarGasto`
 - [x] `services/sheets.ts` — stub `syncMovimiento`
+- [x] `utils/format.ts` — función `fmt` de formato numérico
+- [x] `utils/kardex.ts` — lógica de cálculo PEPS
+- [x] `utils/metrics.ts` — `calcMetricasGlobales` y `calcMargenesProductos`
+- [x] `app/_layout.tsx` + `app/(tabs)/_layout.tsx` — root layout y tab navigator con FAB
+- [x] `app/(tabs)/index.tsx` — dashboard con métricas del día y alertas de stock
+- [x] `app/(tabs)/registrar.tsx` — grilla de productos + bottom sheet de movimiento
+- [x] `app/(tabs)/inventario.tsx` + `app/kardex/[id].tsx` — inventario + kárdex PEPS
+- [x] `app/(tabs)/caja.tsx` — flujo efectivo/Yape + gastos operativos
+- [x] `app/(tabs)/reportes.tsx` — utilidad bruta/neta, margen neto y semáforo por producto
 - [x] TypeScript sin errores (`tsc --noEmit` limpio)
-- [x] Metro arranca sin crash
 
-### 🔜 Próximo paso
-Construir las pantallas una por una en este orden:
-1. **`app/` layout** — root layout + tab navigator con FAB central
-2. **Inicio** (`app/(tabs)/index.tsx`) — dashboard con métricas del día y alertas de stock
-3. **Registrar** (`app/(tabs)/registrar.tsx`) — grilla de productos + bottom sheet de movimiento
-4. **Inventario** (`app/(tabs)/inventario.tsx`) + detalle Kárdex (`app/kardex/[id].tsx`)
-5. **Caja** (`app/(tabs)/caja.tsx`) — flujo efectivo/Yape + gastos
-6. **Reportes** (`app/(tabs)/reportes.tsx`) — rentabilidad y márgenes
+### ✅ Todas las pantallas terminadas
+La app está completa en su versión MVP. Pasos siguientes opcionales:
+- Conectar `services/sheets.ts` con la API real de Google Sheets
+- Añadir filtros de fecha en Reportes (hoy / semana / mes)
+- Pantalla de ajuste de precio/costo desde Inventario
 
 ---
 

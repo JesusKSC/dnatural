@@ -153,6 +153,12 @@ export const useStore = create<AppState & AppActions>()(
     {
       name:    'dnatural-store',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 2,
+      // Resetea productos al nuevo seed (códigos GEL01/MAG01/…) conservando movimientos y gastos.
+      migrate: (state: unknown) => ({
+        ...(state as object),
+        productos: SEED,
+      }),
     },
   ),
 );

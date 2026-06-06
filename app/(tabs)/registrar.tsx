@@ -90,7 +90,7 @@ export default function RegistrarScreen() {
     }
 
     const { movimientos } = useStore.getState();
-    syncMovimiento(movimientos[movimientos.length - 1], selected.nombre).catch(() => {});
+    syncMovimiento(movimientos[movimientos.length - 1], `${selected.codigo} - ${selected.nombre}`).catch(() => {});
 
     const msg = esVenta
       ? `✅ Venta registrada · ${selected.nombre}`

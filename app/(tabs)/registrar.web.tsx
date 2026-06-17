@@ -70,7 +70,7 @@ export default function RegistrarScreen() {
       registrarCompra(selected.id, qty, precioUnit);
     }
     const { movimientos } = useStore.getState();
-    syncMovimiento(movimientos[movimientos.length - 1], selected.nombre).catch(() => {});
+    syncMovimiento(movimientos[movimientos.length - 1], `${selected.codigo} - ${selected.nombre}`).catch(() => {});
     cerrar();
     showToast(esVenta ? `✅ Venta registrada · ${selected.nombre}` : `📥 Compra registrada · ${selected.nombre}`);
   };

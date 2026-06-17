@@ -22,11 +22,9 @@ interface TabConfig {
 }
 
 const TAB_CONFIG: Record<string, TabConfig> = {
-  index:      { label: 'Inicio',     icon: 'home-outline',      iconActive: 'home'        },
-  inventario: { label: 'Inventario', icon: 'cube-outline',      iconActive: 'cube'        },
-  registrar:  { label: 'Registrar',  icon: 'add',               iconActive: 'add', fab: true },
-  caja:       { label: 'Caja',       icon: 'card-outline',      iconActive: 'card'        },
-  reportes:   { label: 'Reportes',   icon: 'bar-chart-outline', iconActive: 'bar-chart'   },
+  index:      { label: 'Inicio',     icon: 'home-outline', iconActive: 'home'             },
+  registrar:  { label: 'Registrar',  icon: 'add',          iconActive: 'add', fab: true   },
+  inventario: { label: 'Inventario', icon: 'cube-outline', iconActive: 'cube'             },
 };
 
 function CustomTabBar({ state, navigation }: TabBarProps) {
@@ -86,11 +84,10 @@ export default function TabLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
+      {/* Orden: Inicio · Registrar (FAB central) · Inventario */}
       <Tabs.Screen name="index"      options={{ title: 'Inicio'     }} />
-      <Tabs.Screen name="inventario" options={{ title: 'Inventario' }} />
       <Tabs.Screen name="registrar"  options={{ title: 'Registrar'  }} />
-      <Tabs.Screen name="caja"       options={{ title: 'Caja'       }} />
-      <Tabs.Screen name="reportes"   options={{ title: 'Reportes'   }} />
+      <Tabs.Screen name="inventario" options={{ title: 'Inventario' }} />
     </Tabs>
   );
 }

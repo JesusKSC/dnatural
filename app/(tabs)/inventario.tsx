@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   FlatList,
+  TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,12 +36,30 @@ export default function InventarioScreen() {
     });
   };
 
+  const irEditar = (producto: Producto) => {
+    router.push({
+      pathname: '/producto/[id]',
+      params: { id: String(producto.id) },
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Kárdex</Text>
-        <Text style={styles.title}>Inventario</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.eyebrow}>Kárdex</Text>
+            <Text style={styles.title}>Inventario</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.newBtn}
+            onPress={() => router.push('/producto/nuevo')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.newBtnText}>＋ Nuevo</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search */}
@@ -62,7 +81,11 @@ export default function InventarioScreen() {
         data={lista}
         keyExtractor={p => String(p.id)}
         renderItem={({ item }) => (
-          <ProductRow producto={item} onPress={() => irKardex(item)} />
+          <ProductRow
+            producto={item}
+            onPress={() => irKardex(item)}
+            onEdit={() => irEditar(item)}
+          />
         )}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -110,6 +133,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     letterSpacing: -0.3,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  newBtn: {
+    backgroundColor: Colors.hoja,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: Radii.full,
+    ...Shadow.sm,
+  },
+  newBtnText: {
+    color: Colors.bosque,
+    fontWeight: '700',
+    fontSize: 14,
   },
 
   /* Search */

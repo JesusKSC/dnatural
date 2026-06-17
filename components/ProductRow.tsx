@@ -7,9 +7,10 @@ import type { Producto } from '@/types';
 interface Props {
   producto: Producto;
   onPress: () => void;
+  onEdit?: () => void;
 }
 
-export default function ProductRow({ producto, onPress }: Props) {
+export default function ProductRow({ producto, onPress, onEdit }: Props) {
   const { nombre, codigo, categoria, stock, costo } = producto;
   const bg   = CatBg[categoria]   ?? Colors.crema2;
   const icon = CatIcon[categoria] ?? '📦';
@@ -32,6 +33,16 @@ export default function ProductRow({ producto, onPress }: Props) {
         <Text style={styles.stockNum}>{stock} u</Text>
         <Badge variant={badgeVariant}>{badgeLabel}</Badge>
       </View>
+      {onEdit && (
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={onEdit}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.6}
+        >
+          <Text style={styles.editIcon}>✏️</Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }
@@ -62,4 +73,13 @@ const styles = StyleSheet.create({
   sub: { fontSize: 12, color: Colors.gris, marginTop: 1 },
   right: { alignItems: 'flex-end', gap: 4 },
   stockNum: { fontWeight: '700', fontSize: 14, color: Colors.carbon },
+  editBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.crema2,
+  },
+  editIcon: { fontSize: 16 },
 });

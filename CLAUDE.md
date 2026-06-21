@@ -1,25 +1,22 @@
 # CLAUDE.md — NatuStock (D'Natural)
 
 > Lee este archivo PRIMERO antes de tocar cualquier código.
-> Contiene el contexto completo del proyecto, reglas de negocio, decisiones técnicas
-> y el estado actual del desarrollo.
+> Contexto completo del proyecto, reglas de negocio, decisiones técnicas y estado actual.
 
 ---
 
 ## 1. Qué es el proyecto
 
-**NatuStock** es una app móvil de gestión comercial para **Doris**, dueña del emprendimiento
-**D'Natural "Vida Saludable"**. Ella importa y revende productos naturales (gelatinas, gomitas,
-cápsulas, suplementos, miel) en ferias de Perú. Opera **solo desde celular o tablet**, no tiene
-laptop y no maneja Excel ni contabilidad.
+**NatuStock** es una app móvil (Expo / React Native) de gestión comercial para **Doris**,
+dueña de **D'Natural "Vida Saludable"**. Vende productos naturales en ferias de Perú, **solo
+desde celular**. La app es su "control remoto": **elegir producto → cantidad → método de pago → guardar**.
 
-La app reemplaza su Excel actual con una interfaz de "tocar":
-**elegir producto → cantidad → método de pago → guardar**.
-Todo el cálculo (kárdex, caja, rentabilidad) lo hace el app, no la usuaria.
+La app cumple **dos roles**:
+1. **Registrar** ventas/compras y **gestionar el inventario** (CRUD de productos) de forma simple.
+2. **Sincronizar** cada acción a un **Google Sheets** que hace toda la contabilidad (KARDEX,
+   RENTABILIDAD, Cash Flow) con fórmulas. **El Sheets es el "cerebro"; la app es el control remoto.**
 
-Contexto completo del negocio: `context/doris-excel-context.md`
-Productos reales (31 items): `context/productos.json` y `data/productos.json`
-Prototipo de diseño: `context/prototipo.html` ← **fuente de verdad visual**
+Contexto del negocio: `context/doris-excel-context.md` · Prototipo visual: `context/prototipo.html`
 
 ---
 
@@ -27,186 +24,171 @@ Prototipo de diseño: `context/prototipo.html` ← **fuente de verdad visual**
 
 | Regla | Detalle |
 |-------|---------|
-| **Stock nunca negativo** | Validar antes de `registrarVenta`. El store ya lo hace. |
-| **Métodos de pago** | Solo `'efectivo'` o `'yape'` (Yape/transferencia). Separarlos en flujo de caja. |
-| **Kárdex PEPS** | Primeras entradas, primeras salidas. Se CALCULA desde `movimientos[]`, nunca se guarda aparte. |
-| **Caja y rentabilidad** | Se CALCULAN desde `movimientos[]` y `gastos[]`. No se guardan. |
-| **Márgenes de referencia** | ≥25% verde · 15–24% amarillo · <15% rojo (ver `constants/theme.ts → Margen`) |
-| **Alerta de stock** | ≤5 unidades → badge "bajo". 0 → badge "agotado". (ver `constants/theme.ts → StockAlerta`) |
+| **Stock nunca negativo** | Validar antes de `registrarVenta` (el store ya lo hace). |
+| **Métodos de pago** | Solo `'efectivo'` o `'yape'`. Mapeo a Sheets: efectivo→"Efectivo", yape→"Yape / Plin". |
+| **Códigos EXACTOS** | Los códigos de producto (`GEL01`, `MAG01`…) deben coincidir EXACTO con la columna A de la BASE DE DATOS del Sheets, o el KARDEX no hace match. |
+| **Alerta de stock** | ≤5 → badge "bajo". 0 → "agotado". (`constants/theme.ts → StockAlerta`) |
+| **La contabilidad vive en el Sheets** | KARDEX, RENTABILIDAD y Cash Flow se calculan con fórmulas en Google Sheets. La app NO escribe en esas hojas. |
 
 ---
 
 ## 3. Diseño visual
 
-**La fuente de verdad del diseño es `context/prototipo.html`.**
-No inventar estilos nuevos. Respetar:
-- Paleta de colores → `constants/theme.ts → Colors`
-- Iconos de categoría → `constants/theme.ts → CatIcon`
-- Fondos de tile/avatar → `constants/theme.ts → CatBg`
-- Radios y sombras → `constants/theme.ts → Radii / Shadow`
-- Tipografía: **Fraunces** (serif, números y títulos) + **Albert Sans** (texto general)
-- Header verde con gradiente `bosque → verde`, bordes redondeados abajo
-- Bottom nav con FAB central elevado (botón Registrar)
-- Cards con fondo blanco, borde `linea`, sombra `sm`
-- Toast de confirmación tras cada acción
+Fuente de verdad: `context/prototipo.html`. Respetar `constants/theme.ts`:
+- Colores (`Colors`: bosque/verde/hoja/crema…), `CatIcon`, `CatBg`, `Radii`, `Shadow`.
+- Header verde bosque con bordes redondeados abajo.
+- Bottom nav con FAB central elevado (botón Registrar).
+- Cards blancas, borde `linea`, sombra `sm`.
 
 ---
 
 ## 4. Stack técnico
 
-| Capa | Tecnología | Notas |
-|------|-----------|-------|
-| Framework | **Expo SDK 56** + **Expo Router** (tabs) | Rutas en `app/` raíz |
-| UI | React Native (sin librerías de UI externas) | Estilos en StyleSheet inline |
-| Estado | **Zustand v5** + `persist` con `AsyncStorage` | Store en `store/useStore.ts` |
-| Persistencia | `@react-native-async-storage/async-storage 2.2.0` | Auto via Zustand persist |
-| Sheets | Stub en `services/sheets.ts` | Conectar al final; firma ya definida |
-| Bottom Sheet | **@gorhom/bottom-sheet** | Instalar al construir pantalla Registrar |
-| Instalación pkgs | `npx expo install` (NUNCA `npm install` directo para RN) | Para SDK compatibility |
+| Capa | Tecnología |
+|------|-----------|
+| Framework | **Expo** + **Expo Router** (file-based, `experiments.typedRoutes` ON) |
+| Estado | **Zustand** + `persist` con `AsyncStorage` (`store/useStore.ts`) |
+| Auth | **Firebase Authentication** (correo/contraseña) — proyecto `dnatural-b73cc` |
+| Sheets | **Google Apps Script Web App** (no API key) — `services/sheets.ts` |
+| Instalación pkgs | `npx expo install` (no `npm install` directo) |
+
+> ⚠️ `npx expo install firebase` instaló firebase v12. `getReactNativePersistence` existe en el
+> bundle RN pero no en los tipos por defecto → se toma con un cast en `services/firebase.ts`.
+> Correr `npx tsc --noEmit` siempre antes de dar por terminado.
+
+> ⚠️ **Typed routes**: al crear/borrar rutas, `tsc` falla hasta que se regenere
+> `.expo/types/router.d.ts`. Se regenera solo al correr `expo start`; si hace falta antes,
+> se edita a mano replicando el patrón de las rutas existentes.
 
 ---
 
-## 5. Estructura de carpetas
+## 5. Estructura de carpetas (actual)
 
 ```
-/                        ← raíz del proyecto (NO usar src/)
-├── app/                 ← Expo Router: rutas y layouts (crear al construir pantallas)
-│   ├── _layout.tsx      ← root layout (ThemeProvider, GestureHandlerRootView)
-│   └── (tabs)/
-│       ├── _layout.tsx  ← tab navigator (5 tabs + FAB central)
-│       ├── index.tsx    ← Inicio (dashboard)
-│       ├── inventario.tsx
-│       ├── registrar.tsx
-│       ├── caja.tsx
-│       └── reportes.tsx
-├── components/          ← componentes reutilizables
-│   └── ui/              ← primitivos (Badge, Card, Stepper, Toast, etc.)
-├── constants/
-│   └── theme.ts         ← ✅ CREADO — colores, sombras, CatIcon, CatBg, umbrales
-├── data/
-│   └── productos.json   ← ✅ CREADO — seed de 31 productos reales
-├── models/              ← placeholder (no usar; tipos van en types/)
-├── navigation/          ← placeholder (no usar; Expo Router maneja navegación)
-├── screens/             ← placeholder (no usar; pantallas van en app/)
-├── services/
-│   └── sheets.ts        ← ✅ CREADO — stub Google Sheets API
-├── store/
-│   └── useStore.ts      ← ✅ CREADO — Zustand store completo
-├── types/
-│   └── index.ts         ← ✅ CREADO — Producto, Movimiento, Gasto, tipos union
-├── utils/               ← funciones auxiliares (crear al necesitarlas)
-├── context/             ← SOLO DOCUMENTACIÓN (no tocar, no importar desde aquí en la app)
-│   ├── doris-excel-context.md
-│   ├── productos.json
-│   └── prototipo.html
-└── CLAUDE.md            ← este archivo
+app/
+├── _layout.tsx              ← root: AuthProvider + "portero" (redirige login/app)
+├── (auth)/                  ← grupo de autenticación
+│   ├── _layout.tsx
+│   ├── login.tsx            ← ingresar (correo + contraseña)
+│   ├── registro.tsx         ← crear cuenta  ⚠️ ver §8 seguridad
+│   └── recuperar.tsx        ← recuperar contraseña por correo
+├── (tabs)/
+│   ├── _layout.tsx          ← bottom nav: Inicio · Registrar(FAB) · Inventario
+│   ├── index.tsx            ← Inicio (dashboard + botón Cerrar sesión)
+│   ├── registrar.tsx        ← grilla de productos + bottom sheet de movimiento
+│   └── inventario.tsx       ← lista + buscar + "＋ Nuevo" + ✏️ editar
+├── producto/[id].tsx        ← CRUD producto (crear / editar / eliminar); id="nuevo" = crear
+└── kardex/[id].tsx          ← kárdex PEPS local de un producto
+components/                  ← ProductRow, Badge, MetricCard, KardexTable…
+constants/theme.ts           ← colores, sombras, CatIcon, CatBg, umbrales
+context/AuthContext.tsx      ← estado de sesión (onAuthStateChanged)
+data/productos.json          ← seed 31 productos (códigos GEL01…MAG04)
+services/
+├── firebase.ts              ← init Firebase + helpers de auth (config dnatural-b73cc)
+└── sheets.ts                ← sincronización con Google Sheets vía Apps Script
+store/useStore.ts            ← Zustand + persist (version 2)
+types/index.ts               ← Producto, Movimiento, Gasto, uniones
 ```
 
-> ⚠️ La carpeta `src/` contiene el boilerplate original de Expo. Se puede ignorar o eliminar
-> cuando se construya `app/` en raíz.
+> ❌ **NO existen** `caja.tsx` ni `reportes.tsx` — se eliminaron (esa contabilidad vive en el Sheets).
+> El bottom nav tiene 3 items con Registrar (FAB) al centro.
 
 ---
 
-## 6. Estado actual del desarrollo
+## 6. Store (`store/useStore.ts`)
+
+```typescript
+const {
+  productos, movimientos, gastos,
+  registrarVenta, registrarCompra, agregarGasto,
+  agregarProducto, actualizarProducto, eliminarProducto,
+} = useStore();
+
+registrarVenta(productoId, cantidad, precioUnit, metodo); // valida stock → { ok, error? }
+registrarCompra(productoId, cantidad, precioUnit);
+agregarProducto({ codigo, nombre, categoria, costo, precio, stockInicial }); // { ok, error? } (código único)
+actualizarProducto(id, cambios);   // si cambia stockInicial, ajusta stock por el delta
+eliminarProducto(id);
+```
+
+- `persist` con `version: 2` + `migrate` que reemplaza los productos viejos por el seed nuevo
+  (códigos GEL01…). Los movimientos y gastos se conservan.
+
+---
+
+## 7. Integración Google Sheets (`services/sheets.ts` + Apps Script)
+
+**Mecanismo:** la app hace `POST` a un **Web App de Apps Script** (`SCRIPT_URL`) pegado a la hoja.
+La hoja es la fuente de verdad contable. La app **solo escribe datos de entrada**; las columnas de
+fórmula (Totales, Stock Actual, Estado…) las calcula la hoja.
+
+**Hojas (pestañas):** `BASE DE DATOS` · `Compras formulario` · `Ventas formulario` · `KARDEX` ·
+`RENTABILIDAD` · `Cash Flow`.
+
+**Funciones de la app:**
+- `syncMovimiento(mov, "CÓDIGO - Nombre")` → VENTA agrega fila a "Ventas formulario" (A–F:
+  timestamp, fecha DD/MM/YYYY, "CÓDIGO - Nombre", cantidad, precio, método). COMPRA → "Compras
+  formulario" (A–E). El script las **inserta encima de la fila TOTAL**.
+- `syncProductoUpsert(p, codigoBusqueda?)` → crea/edita el producto en **BASE DE DATOS y KARDEX**
+  (payload `{ accion:"upsertProducto", codigo, destinos:[{hoja, anclaCodigo?, campos}] }`). Solo
+  manda columnas de entrada; el script **hereda las fórmulas** de la fila de arriba al insertar.
+  Nuevos productos: BASE DE DATOS arriba de `OTR01`, KARDEX arriba de `TOTALES`.
+- `syncProductoEliminar(codigo)` → borra de BASE DE DATOS y KARDEX.
+- `syncGasto` → **no-op** (la hoja no tiene pestaña de gastos).
+
+**Reglas de matching (clave):** la columna "Producto" de los formularios guarda `"CÓDIGO - Nombre"`.
+Las fórmulas de KARDEX/BASE DE DATOS que cuentan ventas/compras usan **comodín**:
+`SUMAR.SI('Ventas formulario'!$C:$C; $A6&" - *"; 'Ventas formulario'!$D:$D)`.
+Las filas TOTALES usan suma elástica: `=SUMA(E6:INDIRECTO("E"&(FILA()-1)))`.
+
+> El código del Apps Script (doPost + helpers `upsertProducto`, `buscarFilaTotal`,
+> `buscarFilaPorCodigo`, `buscarFilaEncabezado`, `encontrarCampo`) se mantiene en la hoja, NO en el
+> repo. Tras editarlo hay que **re-desplegar** (Implementar → Gestionar implementaciones → Nueva
+> versión). La URL del `/exec` no cambia salvo despliegue nuevo; si cambia, actualizar `SCRIPT_URL`.
+
+---
+
+## 8. Autenticación (Firebase)
+
+- `services/firebase.ts`: `initializeApp` + `initializeAuth` con persistencia AsyncStorage
+  (sesión sobrevive al cerrar la app). Helpers: `iniciarSesion`, `registrarUsuario`,
+  `cerrarSesion`, `recuperarPassword`, `mensajeError`. Config del proyecto `dnatural-b73cc`
+  ya pegada (la `apiKey` web no es secreta).
+- `context/AuthContext.tsx`: expone `{ user, cargando }` vía `onAuthStateChanged`.
+- `app/_layout.tsx`: "portero" — sin sesión → `/(auth)/login`; con sesión → `/`.
+- Logout: botón al final de Inicio.
+- En consola: Authentication → Email/Password **habilitado**; usuarios en pestaña "Usuarios".
+
+> ⚠️ **SEGURIDAD pendiente antes del APK final:** la pantalla `registro.tsx` es pública →
+> cualquiera con el APK podría auto-registrarse. Recomendado: **quitar el registro** y crear la
+> cuenta de Doris manualmente en la consola (Authentication → Agregar usuario), dejando solo
+> login + recuperar.
+
+---
+
+## 9. Reglas de desarrollo
+
+- **Diseño**: copiar el prototipo, no inventar estilos.
+- **Pkgs**: siempre `npx expo install`.
+- **Sin `src/`**: el código vive en carpetas raíz (`app/`, `services/`, etc.).
+- **TypeScript**: correr `npx tsc --noEmit` antes de reportar algo como terminado.
+- **Sheets**: la app nunca escribe en KARDEX/RENTABILIDAD/Cash Flow; solo en los formularios y en
+  las columnas de entrada de BASE DE DATOS/KARDEX. Respetar el formato `"CÓDIGO - Nombre"`.
+- **Cambios en el Apps Script**: recordar re-desplegar nueva versión.
+
+---
+
+## 10. Estado actual
 
 ### ✅ Completado
-- [x] `data/productos.json` — seed con los 31 productos reales de Doris
-- [x] `constants/theme.ts` — paleta completa del prototipo
-- [x] `types/index.ts` — `Producto`, `Movimiento`, `Gasto`, `Categoria`, `MetodoPago`, `TipoMovimiento`
-- [x] `store/useStore.ts` — Zustand v5 + persist + `registrarVenta` / `registrarCompra` / `agregarGasto`
-- [x] `services/sheets.ts` — stub `syncMovimiento`
-- [x] `utils/format.ts` — función `fmt` de formato numérico
-- [x] `utils/kardex.ts` — lógica de cálculo PEPS
-- [x] `utils/metrics.ts` — `calcMetricasGlobales` y `calcMargenesProductos`
-- [x] `app/_layout.tsx` + `app/(tabs)/_layout.tsx` — root layout y tab navigator con FAB
-- [x] `app/(tabs)/index.tsx` — dashboard con métricas del día y alertas de stock
-- [x] `app/(tabs)/registrar.tsx` — grilla de productos + bottom sheet de movimiento
-- [x] `app/(tabs)/inventario.tsx` + `app/kardex/[id].tsx` — inventario + kárdex PEPS
-- [x] `app/(tabs)/caja.tsx` — flujo efectivo/Yape + gastos operativos
-- [x] `app/(tabs)/reportes.tsx` — utilidad bruta/neta, margen neto y semáforo por producto
-- [x] TypeScript sin errores (`tsc --noEmit` limpio)
+- Seed 31 productos con códigos reales (GEL01…); theme; tipos; store con CRUD completo.
+- Pantallas: Inicio, Registrar, Inventario, editor de producto (CRUD), kárdex.
+- Bottom nav reducido a Inicio · Registrar · Inventario (caja/reportes eliminados).
+- Integración Google Sheets real (ventas, compras, alta/edición/baja de productos en BASE DE
+  DATOS + KARDEX, con herencia de fórmulas e inserción ordenada).
+- Login Firebase (login, registro, recuperar) + persistencia + portero + logout.
+- `tsc --noEmit` limpio.
 
-### ✅ Todas las pantallas terminadas
-La app está completa en su versión MVP. Pasos siguientes opcionales:
-- Conectar `services/sheets.ts` con la API real de Google Sheets
-- Añadir filtros de fecha en Reportes (hoy / semana / mes)
-- Pantalla de ajuste de precio/costo desde Inventario
-
----
-
-## 7. Imports entre los archivos base
-
-```typescript
-// Desde cualquier pantalla en app/ (con @/ apuntando a raíz):
-import { Colors, CatIcon, CatBg, Shadow, Radii, Margen, StockAlerta } from '@/constants/theme';
-import type { Producto, Movimiento, Gasto, MetodoPago } from '@/types';
-import { useStore } from '@/store/useStore';
-import { syncMovimiento } from '@/services/sheets';
-
-// Si @/ aún no está configurado, usar rutas relativas:
-import { Colors } from '../../constants/theme';
-```
-
-> Nota: `expo/tsconfig.base` no define `@/` por defecto. Configurar en `tsconfig.json`
-> cuando se construya la primera pantalla:
-> ```json
-> { "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./*"] } } }
-> ```
-
----
-
-## 8. Selección de producto en el store
-
-```typescript
-const { productos, movimientos, gastos, registrarVenta, registrarCompra, agregarGasto } = useStore();
-
-// Venta con validación de stock:
-const result = registrarVenta(productoId, cantidad, precioUnit, metodo);
-if (!result.ok) Alert.alert('Error', result.error);
-
-// Compra (entrada de mercadería):
-registrarCompra(productoId, cantidad, precioUnit);
-
-// Gasto operativo:
-agregarGasto('Stand feria', 60);
-```
-
----
-
-## 9. Cálculos derivados (NO guardar, siempre recalcular)
-
-```typescript
-// Ventas de hoy
-const hoy = movimientos.filter(m =>
-  m.tipo === 'venta' && new Date(m.fecha).toDateString() === new Date().toDateString()
-);
-
-// Valor del inventario al costo
-const valorInv = productos.reduce((s, p) => s + p.stock * p.costo, 0);
-
-// Flujo de caja
-const totalEfectivo = movimientos.filter(m => m.metodo === 'efectivo').reduce((s, m) => s + m.total, 0);
-const totalYape     = movimientos.filter(m => m.metodo === 'yape').reduce((s, m) => s + m.total, 0);
-
-// Rentabilidad
-const ingresos    = movimientos.filter(m => m.tipo === 'venta').reduce((s, m) => s + m.total, 0);
-const costoVentas = movimientos.filter(m => m.tipo === 'venta')
-  .reduce((s, m) => { const p = productos.find(x => x.id === m.productoId)!; return s + m.cantidad * p.costo; }, 0);
-const utilidadBruta = ingresos - costoVentas;
-const utilidadNeta  = utilidadBruta - gastos.reduce((s, g) => s + g.monto, 0);
-const margen        = ingresos ? (utilidadNeta / ingresos) * 100 : 0;
-
-// Margen por producto (para Reportes)
-const margenProd = (p: Producto) => p.precio ? ((p.precio - p.costo) / p.precio) * 100 : 0;
-```
-
----
-
-## 10. Reglas de desarrollo
-
-- **Diseño**: copiar el prototipo (`context/prototipo.html`), no inventar.
-- **Pkgs**: siempre `npx expo install`, nunca `npm install` para packages RN.
-- **Pantallas**: una por una, confirmar con el usuario antes de pasar a la siguiente.
-- **Sin `src/`**: todo el código nuevo va en carpetas raíz.
-- **Sheets**: no integrar todavía; el stub ya está listo en `services/sheets.ts`.
-- **TypeScript**: correr `tsc --noEmit` antes de reportar una pantalla como terminada.
+### ⏳ Pendiente
+- **Seguridad**: quitar registro público / crear usuario único (ver §8).
+- Generar el **APK** (EAS Build).

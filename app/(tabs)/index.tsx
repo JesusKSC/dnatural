@@ -1,8 +1,9 @@
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '@/store/useStore';
 import { Colors, Shadow, Radii, CatIcon, CatBg, StockAlerta } from '@/constants/theme';
+import { cerrarSesion } from '@/services/firebase';
 import MetricCard from '@/components/MetricCard';
 import Badge from '@/components/Badge';
 
@@ -30,6 +31,13 @@ export default function InicioScreen() {
   const { productos, movimientos } = useStore();
   const insets = useSafeAreaInsets();
   const now    = new Date();
+
+  const handleCerrarSesion = () => {
+    Alert.alert('Cerrar sesión', '¿Seguro que quieres salir?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Salir', style: 'destructive', onPress: () => { cerrarSesion().catch(() => {}); } },
+    ]);
+  };
 
   const ventasHoy = useMemo(
     () => movimientos.filter(m => m.tipo === 'venta' && isToday(m.fecha)),
@@ -167,6 +175,11 @@ export default function InicioScreen() {
             Solo eliges el producto y la cantidad.
           </Text>
         </View>
+
+        {/* Cerrar sesión */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleCerrarSesion} activeOpacity={0.8}>
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -356,5 +369,20 @@ const styles = StyleSheet.create({
   noteBold: {
     fontWeight: '700',
     color: '#5e4308',
+  },
+  logoutBtn: {
+    marginTop: 18,
+    alignSelf: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: Colors.linea,
+    backgroundColor: Colors.papel,
+  },
+  logoutText: {
+    color: Colors.rojo,
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

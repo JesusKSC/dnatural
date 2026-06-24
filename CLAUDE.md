@@ -111,8 +111,13 @@ actualizarProducto(id, cambios);   // si cambia stockInicial, ajusta stock por e
 eliminarProducto(id);
 ```
 
-- `persist` con `version: 2` + `migrate` que reemplaza los productos viejos por el seed nuevo
-  (códigos GEL01…). Los movimientos y gastos se conservan.
+- `persist` con `version: 2` + `migrate`. El seed `productos.json` es solo estado inicial/offline.
+- **Inventario SHEET-DRIVEN (lectura):** `sincronizarInventario(data)` REEMPLAZA la lista de
+  productos local por la del KARDEX (preservando id/categoría por código) y mapea los movimientos
+  (Ventas/Compras formulario) a `movimientos`. También guarda `valorInventarioSheets`. Así el
+  inventario = lo que está en el Sheets, igual en **cualquier celular/cuenta** (datos permanentes).
+- "Valor del inventario" (Inicio) = suma de `stock × costo` de los productos = total del KARDEX
+  (porque los productos traen Stock Actual × Costo promedio del KARDEX); se actualiza al instante.
 
 ---
 
@@ -135,6 +140,19 @@ fórmula (Totales, Stock Actual, Estado…) las calcula la hoja.
   Nuevos productos: BASE DE DATOS arriba de `OTR01`, KARDEX arriba de `TOTALES`.
 - `syncProductoEliminar(codigo)` → borra de BASE DE DATOS y KARDEX.
 - `syncGasto` → **no-op** (la hoja no tiene pestaña de gastos).
+- `fetchInventarioSheets()` / `refrescarInventario()` → la app **LEE** del KARDEX vía **`doGet`**
+  (`SCRIPT_URL?accion=inventario`): por producto `{ codigo, nombre, costo(=Costo nueva compra=promedio),
+  precio, stockInicial, stock(=Stock Actual) }` + `movimientos` (Ventas/Compras formulario) + `valorInventario`.
+  Se llama al abrir la app y tras cada venta/compra.
+
+**Costo promedio (KARDEX col "Costo nueva compra"):** fórmula auto-contenida por producto:
+`=SI.ERROR(SUMAR.SI.CONJUNTO('Compras formulario'!$F:$F;'Compras formulario'!$C:$C;$A6&" - *")/SUMAR.SI.CONJUNTO('Compras formulario'!$D:$D;'Compras formulario'!$C:$C;$A6&" - *");C6)`
+→ se hereda al insertar productos nuevos. **Valor Inventario = Stock Actual × Costo nueva compra.**
+Las filas TOTALES del KARDEX usan suma elástica `=SUMA(K6:INDIRECTO("K"&(FILA()-1)))` (se expanden con nuevos productos).
+
+> Helpers del Apps Script (en la hoja, NO en el repo): `doPost`, `doGet`, `upsertProducto`,
+> `leerMovimientos`, `fechaISO`, `buscarFilaTotal`, `buscarFilaPorCodigo`, `buscarFilaEncabezado`,
+> `encontrarCampo`, `indiceHeader`, `num`, `ok`. **Tras editarlo: re-desplegar nueva versión.**
 
 **Reglas de matching (clave):** la columna "Producto" de los formularios guarda `"CÓDIGO - Nombre"`.
 Las fórmulas de KARDEX/BASE DE DATOS que cuentan ventas/compras usan **comodín**:
@@ -189,6 +207,27 @@ Las filas TOTALES usan suma elástica: `=SUMA(E6:INDIRECTO("E"&(FILA()-1)))`.
 - Login Firebase (login, registro, recuperar) + persistencia + portero + logout.
 - `tsc --noEmit` limpio.
 
+- Inventario sheet-driven: la app lee productos/movimientos/valor del KARDEX (doGet) → datos
+  permanentes y compartidos en cualquier celular/cuenta.
+- Costo promedio ponderado en KARDEX + valor de inventario según promedio.
+- APK Android generado (perfil `preview`); ícono y splash con logo de hoja; ojo en contraseñas;
+  teclado con `softwareKeyboardLayoutMode: "pan"`.
+
 ### ⏳ Pendiente
 - **Seguridad**: quitar registro público / crear usuario único (ver §8).
-- Generar el **APK** (EAS Build).
+- **iPhone (la dueña usa iPhone):** ver §11. Pendiente decidir TestFlight.
+
+---
+
+## 11. Distribución / Build
+
+- **APK Android (hecho):** `eas build --platform android --profile preview` → `.apk` directo
+  (Yes al keystore la 1ª vez). El archivo descarga con nombre = build id (renombrar a mano).
+- **QR Expo Go (EAS Update):** `eas update --branch preview --message "..."`. Requiere
+  `runtimeVersion: "exposdk:54.0.0"` en `app.json` para que Expo Go (SDK 54) cargue el update.
+  ⚠️ Inestable: a veces da *"Failed to download remote update"*. Si pasa, usar el túnel.
+- **Túnel (demo confiable):** `npm run tunnel` (ngrok ya configurado con NGROK_AUTHTOKEN en el
+  script). Funciona en Expo Go (Android/iPhone) **pero necesita la PC encendida**.
+- **iPhone / iOS:** NO hay `.apk`/`.aab` para iPhone. Expo Go solo sirve para demo (con túnel o
+  EAS Update). Para uso real **permanente sin PC** → **TestFlight** (cuenta Apple Developer
+  **$99/año**, EAS construye el `.ipa` desde Windows, sin Mac). Firebase Auth funciona en iOS.

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '@/store/useStore';
-import { syncMovimiento } from '@/services/sheets';
+import { syncMovimiento, refrescarInventario } from '@/services/sheets';
 import { Colors, Shadow, Radii, CatIcon, CatBg } from '@/constants/theme';
 import { fmt } from '@/utils/format';
 import ProductTile from '@/components/ProductTile';
@@ -71,6 +71,7 @@ export default function RegistrarScreen() {
     }
     const { movimientos } = useStore.getState();
     syncMovimiento(movimientos[movimientos.length - 1], `${selected.codigo} - ${selected.nombre}`).catch(() => {});
+    setTimeout(() => { refrescarInventario().catch(() => {}); }, 1800);
     cerrar();
     showToast(esVenta ? `✅ Venta registrada · ${selected.nombre}` : `📥 Compra registrada · ${selected.nombre}`);
   };

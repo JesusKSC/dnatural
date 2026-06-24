@@ -1,4 +1,5 @@
 import type { Gasto, Movimiento, Producto } from "../types";
+import { useStore } from "../store/useStore";
 
 // Web App de Apps Script desplegado sobre la hoja de Google (la usuaria es dueña).
 const SCRIPT_URL =
@@ -132,6 +133,58 @@ export async function syncProductoUpsert(
   } catch (err) {
     console.warn("[Sheets] syncProductoUpsert falló:", err);
   }
+}
+
+export interface ProductoSheets {
+  codigo: string;
+  nombre: string;
+  costo: number;        // "Costo nueva compra" (promedio) del KARDEX
+  precio: number;       // "Precio Venta"
+  stockInicial: number; // "Stock Inicial"
+  stock: number;        // "Stock Actual"
+}
+
+export interface MovimientoSheets {
+  tipo: "venta" | "compra";
+  codigo: string;
+  fecha: string;     // "YYYY-MM-DDT00:00:00"
+  cantidad: number;
+  precio: number;
+  metodo: string;    // solo ventas ("Efectivo" / "Yape / Plin")
+}
+
+export interface InventarioSheets {
+  /** Lista completa de productos leída del KARDEX (es el inventario real). */
+  productos: ProductoSheets[];
+  /** Movimientos (ventas + compras) leídos de los formularios (historial compartido). */
+  movimientos: MovimientoSheets[];
+  /** Valor total del inventario al costo (suma de "Valor Inventario" del KARDEX). */
+  valorInventario: number;
+}
+
+/**
+ * Lee del KARDEX (vía doGet) el stock actual y el costo promedio de cada producto, y el valor
+ * total del inventario, para que la app refleje los números reales tras todos los movimientos.
+ */
+export async function fetchInventarioSheets(): Promise<InventarioSheets> {
+  try {
+    const res  = await fetch(`${SCRIPT_URL}?accion=inventario`);
+    const data = await res.json();
+    return {
+      productos:       Array.isArray(data?.productos) ? data.productos : [],
+      movimientos:     Array.isArray(data?.movimientos) ? data.movimientos : [],
+      valorInventario: typeof data?.valorInventario === "number" ? data.valorInventario : 0,
+    };
+  } catch (err) {
+    console.warn("[Sheets] fetchInventarioSheets falló:", err);
+    return { productos: [], movimientos: [], valorInventario: 0 };
+  }
+}
+
+/** Vuelve a leer el inventario del Sheets y lo aplica al store (productos, stock, costo, movimientos). */
+export async function refrescarInventario(): Promise<void> {
+  const data = await fetchInventarioSheets();
+  useStore.getState().sincronizarInventario(data);
 }
 
 /** Elimina un producto de BASE DE DATOS y KARDEX buscándolo por su código. */

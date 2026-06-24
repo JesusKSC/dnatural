@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Shadow, Radii } from '@/constants/theme';
+import { refrescarInventario } from '@/services/sheets';
 
 interface TabBarProps {
   state: {
@@ -79,6 +81,11 @@ function CustomTabBar({ state, navigation }: TabBarProps) {
 }
 
 export default function TabLayout() {
+  // Al entrar a la app (con sesión), lee del Sheets el inventario real (productos, stock, costo).
+  useEffect(() => {
+    refrescarInventario().catch(() => {});
+  }, []);
+
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}

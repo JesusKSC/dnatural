@@ -45,6 +45,10 @@
         "projectId": "149ca58a-400e-4c57-a73d-226370fa54a9"
       }
     },
-    "owner": "sanchez_castillon_jesus_keith"
+    "owner": "sanchez_castillon_jesus_keith",
+    "runtimeVersion": "exposdk:54.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/149ca58a-400e-4c57-a73d-226370fa54a9"
+    }
   }
 }

@@ -35,6 +35,8 @@ interface AppState {
   gastos:       Gasto[];
   _nextMovId:   number;
   _nextGastoId: number;
+  /** Valor total del inventario leído del KARDEX del Sheets (null = aún no se ha leído). */
+  valorInventarioSheets: number | null;
 }
 
 interface AppActions {
@@ -79,6 +81,23 @@ interface AppActions {
 
   /** Elimina un producto del catálogo. */
   eliminarProducto: (id: number) => void;
+
+  /**
+   * Reemplaza el inventario local con la lista de productos del KARDEX (el inventario real),
+   * preservando id y categoría por código, y guarda el valor total del inventario.
+   * Si el Sheets no devuelve productos (sin internet/error), conserva el inventario local.
+   */
+  sincronizarInventario: (data: {
+    productos: {
+      codigo: string; nombre: string; costo: number;
+      precio: number; stockInicial: number; stock: number;
+    }[];
+    movimientos: {
+      tipo: 'venta' | 'compra'; codigo: string; fecha: string;
+      cantidad: number; precio: number; metodo: string;
+    }[];
+    valorInventario: number;
+  }) => void;
 }
 
 // ─── Store ──────────────────────────────────────────────────────────────────
@@ -91,6 +110,7 @@ export const useStore = create<AppState & AppActions>()(
       gastos:       [],
       _nextMovId:   1,
       _nextGastoId: 1,
+      valorInventarioSheets: null,
 
       registrarVenta(productoId, cantidad, precioUnit, metodo) {
         const { productos, movimientos, _nextMovId } = get();
@@ -203,6 +223,67 @@ export const useStore = create<AppState & AppActions>()(
       eliminarProducto(id) {
         const { productos } = get();
         set({ productos: productos.filter((p) => p.id !== id) });
+      },
+
+      sincronizarInventario({ productos: datos, movimientos: movs, valorInventario }) {
+        const { productos } = get();
+
+        // Sin productos del Sheets (offline/error) → no tocar el inventario local.
+        if (datos.length === 0) {
+          if (valorInventario > 0) set({ valorInventarioSheets: valorInventario });
+          return;
+        }
+
+        // Preserva id y categoría por código (para no romper iconos ni referencias).
+        const previos = new Map(
+          productos.map((p) => [p.codigo.trim().toUpperCase(), p]),
+        );
+        let nextId = productos.reduce((m, p) => Math.max(m, p.id), 0) + 1;
+
+        const nuevos: Producto[] = datos.map((d) => {
+          const prev = previos.get(d.codigo.trim().toUpperCase());
+          return {
+            id:           prev ? prev.id : nextId++,
+            codigo:       d.codigo,
+            nombre:       d.nombre || prev?.nombre || d.codigo,
+            categoria:    prev?.categoria ?? 'Otros',
+            costo:        d.costo > 0 ? d.costo : (prev?.costo ?? 0),
+            precio:       d.precio > 0 ? d.precio : (prev?.precio ?? 0),
+            stockInicial: d.stockInicial,
+            stock:        d.stock,
+          };
+        });
+
+        // Mapea los movimientos del Sheets a Movimiento (resuelve productoId por código).
+        const idPorCodigo = new Map(
+          nuevos.map((p) => [p.codigo.trim().toUpperCase(), p.id]),
+        );
+        const movimientos: Movimiento[] = [];
+        movs.forEach((m, i) => {
+          const productoId = idPorCodigo.get(m.codigo.trim().toUpperCase());
+          if (productoId === undefined) return;
+          const metodo: MetodoPago | null =
+            m.tipo === 'venta'
+              ? (String(m.metodo).toLowerCase().includes('yape') ? 'yape' : 'efectivo')
+              : null;
+          movimientos.push({
+            id:         i + 1,
+            tipo:       m.tipo,
+            productoId,
+            cantidad:   m.cantidad,
+            precioUnit: m.precio,
+            metodo,
+            total:      m.cantidad * m.precio,
+            fecha:      m.fecha,
+          });
+        });
+
+        set({
+          productos:             nuevos,
+          movimientos,
+          _nextMovId:            movimientos.length + 1,
+          valorInventarioSheets: valorInventario > 0 ? valorInventario : null,
+        });
       },
     }),
     {

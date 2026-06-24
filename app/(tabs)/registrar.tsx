@@ -16,7 +16,7 @@ import BottomSheet, {
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import { useStore } from '@/store/useStore';
-import { syncMovimiento } from '@/services/sheets';
+import { syncMovimiento, refrescarInventario } from '@/services/sheets';
 import { Colors, Shadow, Radii, CatIcon, CatBg } from '@/constants/theme';
 import { fmt } from '@/utils/format';
 import ProductTile from '@/components/ProductTile';
@@ -91,6 +91,8 @@ export default function RegistrarScreen() {
 
     const { movimientos } = useStore.getState();
     syncMovimiento(movimientos[movimientos.length - 1], `${selected.codigo} - ${selected.nombre}`).catch(() => {});
+    // Tras escribir en el Sheets, espera a que recalcule y refresca el inventario (stock, costo, valor).
+    setTimeout(() => { refrescarInventario().catch(() => {}); }, 1800);
 
     const msg = esVenta
       ? `✅ Venta registrada · ${selected.nombre}`

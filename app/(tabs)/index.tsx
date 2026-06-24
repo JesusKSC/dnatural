@@ -54,6 +54,8 @@ export default function InicioScreen() {
     () => ventasHoy.filter(m => m.metodo === 'efectivo').reduce((s, m) => s + m.total, 0),
     [ventasHoy],
   );
+  // Los productos vienen del KARDEX (stock actual + costo promedio), así que sumar
+  // stock × costo = el valor total del inventario del KARDEX, y se actualiza al instante.
   const valorInventario = useMemo(
     () => productos.reduce((s, p) => s + p.stock * p.costo, 0),
     [productos],
